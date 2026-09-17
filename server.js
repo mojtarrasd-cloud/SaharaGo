@@ -79,7 +79,7 @@ app.post('/api/cuentas/salir', (req, res) => {
 app.get('/api/status', (req, res) => {
   res.json({
     ok: true,
-    message: 'Servidor SaharaGo funcionando'
+    message: 'Servidor Taxily funcionando'
   });
 });
 const DATA_FILE = path.join(__dirname, 'viajes.json');
@@ -299,6 +299,6 @@ app.put('/api/viajes/:id/valoracion', async (req, res) => {
   } catch (error) { res.status(500).json({ok:false,message:'No se pudo guardar la valoración'}); }
 });
 app.listen(PORT, () => {
-  console.log('SaharaGo funcionando en http://localhost:3000');
+  console.log('Taxily funcionando en http://localhost:3000');
 });
 
