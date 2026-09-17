@@ -30,8 +30,9 @@ async function loadHistory(){
   try{
     const respuesta=await fetch('/api/viajes');
     const viajes=await respuesta.json();
-    if(!viajes.length){content.textContent=lang==='es'?'Todavía no hay viajes guardados.':'لا توجد رحلات محفوظة بعد.';return;}
-    content.innerHTML=viajes.slice().reverse().map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br>${scheduleText(v)}<br>💰 ${v.precio||500} DA · ${v.estado}<br>🕒 ${v.creadoEn?new Date(v.creadoEn).toLocaleString():''}</div>`).join('');
+    const propios=account?viajes.filter(v=>v.pasajeroId===account.id||v.conductorId===account.id):viajes;
+    if(!propios.length){content.textContent=lang==='es'?'Todavía no hay viajes guardados.':'لا توجد رحلات محفوظة بعد.';return;}
+    content.innerHTML=propios.slice().reverse().map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br>${scheduleText(v)}<br>💰 ${v.precio||500} DA · ${v.estado}<br>🕒 ${v.creadoEn?new Date(v.creadoEn).toLocaleString():''}</div>`).join('');
   }catch(error){content.textContent=lang==='es'?'No se pudo cargar el historial.':'تعذر تحميل السجل.';}
 }
 function priceForIndices(origen,destino){return 300+(Math.abs(Number(origen)-Number(destino))*200);}
@@ -235,9 +236,9 @@ function driver(x){
     const respuesta=await fetch('/api/viajes');
     const viajes=await respuesta.json();
 
-    const pendientes=viajes.filter(v=>v.estado==='solicitado');
-    const porValorar=viajes.filter(v=>v.estado==='finalizado'&&!v.valoracionPasajero);
     const perfilConductor=getProfile('d');
+    const pendientes=viajes.filter(v=>v.estado==='solicitado');
+    const porValorar=viajes.filter(v=>v.estado==='finalizado'&&(v.conductorId===perfilConductor?.id||v.conductor?.nombre===perfilConductor?.nombre)&&!v.valoracionPasajero);
     const asignados=viajes.filter(v=>(v.conductorId===perfilConductor?.id||v.conductor?.nombre===perfilConductor?.nombre)&&['aceptado','conductor_llegado','en_curso'].includes(v.estado));
     knownPendingTrips=new Set(pendientes.map(v=>v.id));
     if(!driverNoticeTimer) driverNoticeTimer=setInterval(checkDriverNotifications,4000);
