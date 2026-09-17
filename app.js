@@ -1,8 +1,11 @@
 const camps=['Smara / السمارة','El Aaiún / العيون','Auserd / أوسرد','Dajla / الداخلة','Rabuni / الرابوني'];
 const E={title:'Tu viaje, más cerca',sub:'Reserva viajes entre los campamentos.',loc:'Activa y permite la ubicación para usar SaharaGo.',origin:'Origen',dest:'Destino',when:'¿Cuándo quieres viajar?',now:'Ahora',later:'Reservar',date:'Fecha',time:'Hora',pass:'Pasajeros',request:'Solicitar viaje',role:'¿Cómo quieres usar SaharaGo?',passenger:'Pasajero',driver:'Conductor',history:'Historial de viajes',search:'Buscando conductor...',found:'¡Conductor encontrado!',confirm:'Confirmar viaje',back:'Volver'};
 const A={title:'رحلتك أقرب إليك',sub:'احجز رحلات بين المخيمات.',loc:'فعّل الموقع واسمح للتطبيق باستخدامه.',origin:'نقطة الانطلاق',dest:'الوجهة',when:'متى تريد السفر؟',now:'الآن',later:'حجز',date:'التاريخ',time:'الوقت',pass:'عدد الركاب',request:'طلب الرحلة',role:'كيف تريد استخدام SaharaGo؟',passenger:'راكب',driver:'سائق',history:'سجل الرحلات',search:'جاري البحث عن سائق...',found:'تم العثور على سائق!',confirm:'تأكيد الرحلة',back:'رجوع'};
-let lang='es',role=null,timing='now',o='',d='',currentTripId=null,pollTimer=null,lastTripStatus='',driverLocation=null,tripMap=null,driverMarker=null,locationWatcher=null,sharingTripId=null,passengerConfirmed=false,profileRole=null,driverPollTimer=null,currentDriverTripId=null,driverNoticeTimer=null,knownPendingTrips=new Set(),reminderSeen=new Set(),currentPrice=300;
+let lang='es',role=null,accountMode=null,account=loadAccount(),timing='now',o='',d='',currentTripId=null,pollTimer=null,lastTripStatus='',driverLocation=null,tripMap=null,driverMarker=null,locationWatcher=null,sharingTripId=null,passengerConfirmed=false,profileRole=null,driverPollTimer=null,currentDriverTripId=null,driverNoticeTimer=null,knownPendingTrips=new Set(),reminderSeen=new Set(),currentPrice=300;
 const t=()=>lang==='es'?E:A;
+function loadAccount(){try{return JSON.parse(localStorage.getItem('saharago_session'));}catch(error){return null;}}
+function saveAccount(perfil){account=perfil;localStorage.setItem('saharago_session',JSON.stringify(perfil));}
+function logout(){localStorage.removeItem('saharago_session');account=null;role=null;render();}
 function selectRole(r){
   if(r==='h'){role='h';render();return;}
   profileRole=r;
@@ -10,12 +13,15 @@ function selectRole(r){
   role = r;
   render();
 }
-function getProfile(tipo){try{return JSON.parse(localStorage.getItem('saharago_'+tipo));}catch(error){return null;}}
+function getProfile(tipo){if(account&&account.tipo===tipo)return account;try{return JSON.parse(localStorage.getItem('saharago_'+tipo));}catch(error){return null;}}
 function showNotice(message){const anterior=document.querySelector('.toast');if(anterior)anterior.remove();const aviso=document.createElement('div');aviso.className='toast';aviso.textContent=message;document.body.appendChild(aviso);setTimeout(()=>aviso.remove(),4000);if('Notification' in window&&Notification.permission==='granted')new Notification('SaharaGo',{body:message});}
 async function enableNotifications(){if(!('Notification' in window)){alert('Las notificaciones no están disponibles.');return;}const permiso=await Notification.requestPermission();showNotice(permiso==='granted'?'🔔 Notificaciones activadas.':'Las notificaciones no fueron activadas.');}
-function render(){let x=t();document.body.classList.toggle('rtl',lang==='ar');document.querySelector('#lang').textContent=lang==='es'?'العربية':'Español';document.querySelector('#screen').innerHTML=!role?home(x):role==='profile'?profileForm(x):role==='p'?booking(x):role==='d'?driver(x):history(x);if(role==='h')loadHistory();}
-function home(x){return `<h1>${x.title}</h1><p>${x.sub}</p><div class="notice">📍 ${x.loc}</div><button class="primary" onclick="loc()">📍 ${lang==='es'?'Activar ubicación':'تفعيل الموقع'}</button><button class="secondary" style="width:100%;margin-top:12px" onclick="enableNotifications()">🔔 ${lang==='es'?'Activar notificaciones':'تفعيل الإشعارات'}</button><div class="card"><h3>${x.role}</h3><div class="choice"><button onclick="selectRole('p')">👤 ${x.passenger}</button>
-<button onclick="selectRole('d')">🚗 ${x.driver}</button></div><button class="secondary" style="width:100%;margin-top:12px" onclick="selectRole('h')">📋 ${x.history}</button></div>`}
+function render(){let x=t();document.body.classList.toggle('rtl',lang==='ar');document.querySelector('#lang').textContent=lang==='es'?'العربية':'Español';document.querySelector('#screen').innerHTML=accountMode?accountForm():!role?home(x):role==='account'?`<div class="card"><h2>👤 Mi perfil</h2><p><b>${account.nombre}</b><br>${account.tipo==='conductor'?'🚗 Conductor':'👤 Pasajero'}${account.vehiculo?`<br>${account.vehiculo}${account.matricula?' · '+account.matricula:''}`:''}</p><div id="accountStats" class="notice">Cargando datos...</div><button class="secondary" onclick="role=null;render()">Volver</button></div>`:role==='profile'?profileForm(x):role==='p'?booking(x):role==='d'?driver(x):history(x);if(role==='h')loadHistory();}
+function home(x){const access=account?`<div class="notice">👋 ${account.nombre}<br><button class="secondary" style="margin-top:8px" onclick="showMyProfile()">Mi perfil</button> <button class="secondary" style="margin-top:8px" onclick="logout()">Salir</button></div>`:`<button class="primary" onclick="accountMode='login';render()">Entrar</button><button class="secondary" style="width:100%;margin-top:12px" onclick="accountMode='register';render()">Crear cuenta</button>`;const action=account?(account.tipo==='conductor'?`<button class="primary" onclick="selectRole('d')">🚗 Abrir zona de conductor</button>`:`<button class="primary" onclick="selectRole('p')">👤 Pedir un viaje</button>`):`<div class="choice"><button onclick="selectRole('p')">👤 ${x.passenger}</button><button onclick="selectRole('d')">🚗 ${x.driver}</button></div>`;return `<h1>${x.title}</h1><p>${x.sub}</p>${access}<div class="notice">📍 ${x.loc}</div><button class="primary" onclick="loc()">📍 ${lang==='es'?'Activar ubicación':'تفعيل الموقع'}</button><button class="secondary" style="width:100%;margin-top:12px" onclick="enableNotifications()">🔔 ${lang==='es'?'Activar notificaciones':'تفعيل الإشعارات'}</button><div class="card"><h3>${x.role}</h3>${action}<button class="secondary" style="width:100%;margin-top:12px" onclick="selectRole('h')">📋 ${x.history}</button></div>`}
+function accountForm(){const register=accountMode==='register';return `<div class="card"><h2>${register?'Crear cuenta':'Entrar'}</h2>${register?`<input id="an" placeholder="Nombre"><select id="at" onchange="toggleCarFields()"><option value="pasajero">Pasajero</option><option value="conductor">Conductor</option></select><div id="carFields"></div>`:''}<input id="ap" type="tel" placeholder="Teléfono"><input id="aw" type="password" minlength="6" placeholder="Contraseña (mínimo 6 caracteres)"><button class="primary" onclick="submitAccount()">${register?'Crear cuenta':'Entrar'}</button><button class="secondary" onclick="accountMode=null;render()">Volver</button></div>`}
+function toggleCarFields(){const box=document.querySelector('#carFields');if(box)box.innerHTML=document.querySelector('#at').value==='conductor'?`<input id="av" placeholder="Vehículo"><input id="am" placeholder="Matrícula">`:'';}
+async function submitAccount(){const body={telefono:document.querySelector('#ap').value.trim(),password:document.querySelector('#aw').value};if(accountMode==='register'){body.nombre=document.querySelector('#an').value.trim();body.tipo=document.querySelector('#at').value;body.vehiculo=document.querySelector('#av')?.value.trim();body.matricula=document.querySelector('#am')?.value.trim();}try{const r=await fetch('/api/cuentas/'+(accountMode==='register'?'registro':'login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!d.ok){alert(d.message);return;}saveAccount(d.perfil);accountMode=null;role=account.tipo==='conductor'?'d':'p';render();}catch(error){alert('No se pudo conectar con el servidor.');}}
+async function showMyProfile(){if(!account)return;role='account';render();const box=document.querySelector('#accountStats');try{const r=await fetch('/api/perfiles/'+account.id+'/resumen');const s=await r.json();box.innerHTML=`<div class="notice">🚕 Viajes: <b>${s.viajes}</b><br>⭐ Valoración: <b>${s.valoraciones? s.media.toFixed(1)+' / 5 ('+s.valoraciones+')':'Aún sin valoraciones'}</b>${account.tipo==='conductor'?`<br>💰 Ingresos acumulados: <b>${s.ingresos} DA</b>`:''}</div>`;}catch(error){box.textContent='No se pudo cargar el perfil.';}}
 function profileForm(x){const conductor=profileRole==='d';return `<div class="card"><h3>👤 ${lang==='es'?'Tu perfil':'ملفك الشخصي'}</h3><label>${lang==='es'?'Nombre':'الاسم'}</label><input id="profileName" placeholder="${lang==='es'?'Tu nombre':'اسمك'}"><label>${lang==='es'?'Teléfono':'الهاتف'}</label><input id="profilePhone" type="tel" placeholder="+34 ...">${conductor?`<label>${lang==='es'?'Vehículo':'السيارة'}</label><input id="profileVehicle" placeholder="Toyota Land Cruiser"><label>${lang==='es'?'Matrícula':'رقم اللوحة'}</label><input id="profilePlate" placeholder="1234 ABC">`:''}<button class="primary" onclick="saveProfile()">${lang==='es'?'Guardar y continuar':'حفظ ومتابعة'}</button><button class="secondary" style="width:100%;margin-top:12px" onclick="role=null;render()">${x.back}</button></div>`}
 function saveProfile(){const nombre=document.querySelector('#profileName').value.trim();const telefono=document.querySelector('#profilePhone').value.trim();if(!nombre||!telefono){alert(lang==='es'?'Escribe tu nombre y teléfono.':'أدخل الاسم والهاتف.');return;}const perfil={nombre,telefono};if(profileRole==='d'){perfil.vehiculo=document.querySelector('#profileVehicle').value.trim()||'Vehículo';perfil.matricula=document.querySelector('#profilePlate').value.trim()||'—';}localStorage.setItem('saharago_'+profileRole,JSON.stringify(perfil));role=profileRole;render();}
 function history(x){return `<div class="card"><h3>📋 ${x.history}</h3><div id="historyContent" class="notice">${lang==='es'?'Cargando viajes...':'جاري تحميل الرحلات...'}</div><button class="secondary" style="width:100%" onclick="role=null;render()">${x.back}</button></div>`}
@@ -58,6 +64,7 @@ async function trip(){
         pasajeros: Number(pasajeros),
         ubicacion,
         pasajero: getProfile('p'),
+        pasajeroId: account?.tipo==='pasajero'?account.id:null,
         tipoReserva: timing==='later'?'programada':'ahora',
         fechaHora
       })
@@ -231,7 +238,7 @@ function driver(x){
     const pendientes=viajes.filter(v=>v.estado==='solicitado');
     const porValorar=viajes.filter(v=>v.estado==='finalizado'&&!v.valoracionPasajero);
     const perfilConductor=getProfile('d');
-    const asignados=viajes.filter(v=>v.conductor?.nombre===perfilConductor?.nombre&&['aceptado','conductor_llegado','en_curso'].includes(v.estado));
+    const asignados=viajes.filter(v=>(v.conductorId===perfilConductor?.id||v.conductor?.nombre===perfilConductor?.nombre)&&['aceptado','conductor_llegado','en_curso'].includes(v.estado));
     knownPendingTrips=new Set(pendientes.map(v=>v.id));
     if(!driverNoticeTimer) driverNoticeTimer=setInterval(checkDriverNotifications,4000);
 
@@ -290,8 +297,8 @@ async function checkDriverNotifications(){
     const nuevos=viajes.filter(v=>v.estado==='solicitado'&&!knownPendingTrips.has(v.id));
     nuevos.forEach(v=>knownPendingTrips.add(v.id));
     if(nuevos.length) showNotice(`🚗 ${lang==='es'?'Tienes un nuevo viaje disponible.':'لديك رحلة جديدة متاحة.'}`);
-    const nombre=getProfile('d')?.nombre;
-    viajes.filter(v=>v.conductor?.nombre===nombre&&v.tipoReserva==='programada'&&v.estado==='aceptado'&&v.fechaHora).forEach(v=>{
+    const perfil=getProfile('d');
+    viajes.filter(v=>(v.conductorId===perfil?.id||v.conductor?.nombre===perfil?.nombre)&&v.tipoReserva==='programada'&&v.estado==='aceptado'&&v.fechaHora).forEach(v=>{
       const horas=(new Date(v.fechaHora).getTime()-Date.now())/3600000;
       [3,1].forEach(h=>{
         const clave=v.id+'-'+h;
@@ -317,7 +324,7 @@ async function updateDriverTrip(id,estado,ubicacionConductor=null,conductor=null
     const respuesta = await fetch('/api/viajes/' + id, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({estado, conductorUbicacion: ubicacionConductor, conductor, pagoEstado})
+      body: JSON.stringify({estado, conductorUbicacion: ubicacionConductor, conductor, conductorId:account?.tipo==='conductor'?account.id:null, pagoEstado})
     });
     const datos = await respuesta.json();
     if(!datos.ok){ alert('No se pudo actualizar el viaje.'); return; }
