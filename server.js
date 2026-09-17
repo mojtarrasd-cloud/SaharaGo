@@ -7,6 +7,32 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
+const SESSION_KEY = process.env.SESSION_SECRET || SUPABASE_SECRET_KEY || crypto.randomBytes(32).toString('hex');
+const SESSION_SECONDS = 7 * 24 * 60 * 60;
+function publicProfile(perfil) {
+  return { id:perfil.id, nombre:perfil.nombre, tipo:perfil.tipo, vehiculo:perfil.vehiculo, matricula:perfil.matricula };
+}
+function sessionSignature(value) {
+  return crypto.createHmac('sha256', SESSION_KEY).update('saharago-session:' + value).digest('base64url');
+}
+function startSession(res, perfil) {
+  const value = Buffer.from(JSON.stringify({ perfil:publicProfile(perfil), exp:Date.now() + SESSION_SECONDS * 1000 })).toString('base64url');
+  res.cookie('saharago_auth', value + '.' + sessionSignature(value), { httpOnly:true, secure:process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER), sameSite:'lax', maxAge:SESSION_SECONDS * 1000, path:'/' });
+}
+function readSession(req) {
+  try {
+    const cookie = (req.headers.cookie || '').split(';').map(part=>part.trim()).find(part=>part.startsWith('saharago_auth='));
+    if (!cookie) return null;
+    const [value, signature, extra] = decodeURIComponent(cookie.slice('saharago_auth='.length)).split('.');
+    if (!value || !signature || extra) return null;
+    const expected = Buffer.from(sessionSignature(value));
+    const actual = Buffer.from(signature);
+    if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return null;
+    const session = JSON.parse(Buffer.from(value, 'base64url').toString());
+    if (!Number.isFinite(session.exp) || session.exp <= Date.now() || !session.perfil?.id) return null;
+    return session.perfil;
+  } catch { return null; }
+}
 
 async function supabase(table, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) throw new Error('Supabase no está configurado');
@@ -28,14 +54,26 @@ for (const asset of ['index.html', 'app.js', 'styles.css', 'manifest.json', 'ser
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.post('/api/cuentas/registro', async (req, res) => {
-  const { nombre, telefono, password, tipo, vehiculo, matricula } = req.body;
-  if (!nombre || !telefono || !password || password.length < 6 || !['pasajero', 'conductor'].includes(tipo)) return res.status(400).json({ ok:false, message:'Completa los datos y usa una contraseña de al menos 6 caracteres' });
-  try { const [perfil] = await supabase('profiles', { method:'POST', body:JSON.stringify({ nombre, telefono, password_hash:hashPassword(password), tipo, vehiculo:vehiculo||null, matricula:matricula||null }) }); res.json({ ok:true, perfil:{ id:perfil.id, nombre:perfil.nombre, tipo:perfil.tipo, vehiculo:perfil.vehiculo, matricula:perfil.matricula } }); }
+  const { nombre, telefono, password, tipo, vehiculo, matricula } = req.body || {};
+  if (typeof nombre !== 'string' || !nombre.trim() || typeof telefono !== 'string' || !telefono.trim() || typeof password !== 'string' || password.length < 6 || password.length > 256 || !['pasajero', 'conductor'].includes(tipo)) return res.status(400).json({ ok:false, message:'Completa los datos y usa una contraseña de al menos 6 caracteres' });
+  try { const [perfil] = await supabase('profiles', { method:'POST', body:JSON.stringify({ nombre:nombre.trim(), telefono:telefono.trim(), password_hash:hashPassword(password), tipo, vehiculo:vehiculo||null, matricula:matricula||null }) }); startSession(res, perfil); res.json({ ok:true, perfil:publicProfile(perfil) }); }
   catch (error) { res.status(400).json({ ok:false, message:'No se pudo crear la cuenta' }); }
 });
 app.post('/api/cuentas/login', async (req, res) => {
-  try { const perfiles = await supabase(`profiles?telefono=eq.${encodeURIComponent(req.body.telefono)}&select=*`); const perfil = perfiles[0]; if (!perfil || !checkPassword(req.body.password||'', perfil.password_hash)) return res.status(401).json({ ok:false, message:'Teléfono o contraseña incorrectos' }); res.json({ ok:true, perfil:{ id:perfil.id, nombre:perfil.nombre, tipo:perfil.tipo, vehiculo:perfil.vehiculo, matricula:perfil.matricula } }); }
+  const { telefono, password } = req.body || {};
+  if (typeof telefono !== 'string' || !telefono.trim() || typeof password !== 'string' || !password || password.length > 256) return res.status(400).json({ ok:false, message:'Escribe tu teléfono y contraseña' });
+  try { const perfiles = await supabase(`profiles?telefono=eq.${encodeURIComponent(telefono.trim())}&select=*`); const perfil = perfiles[0]; if (!perfil || !checkPassword(password, perfil.password_hash)) return res.status(401).json({ ok:false, message:'Teléfono o contraseña incorrectos' }); startSession(res, perfil); res.json({ ok:true, perfil:publicProfile(perfil) }); }
   catch (error) { res.status(500).json({ ok:false, message:'No se pudo iniciar sesión' }); }
+});
+app.get('/api/cuentas/sesion', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const perfil = readSession(req);
+  if (!perfil) return res.status(401).json({ ok:false, message:'Inicia sesión para confirmar tu solicitud' });
+  res.json({ ok:true, perfil });
+});
+app.post('/api/cuentas/salir', (req, res) => {
+  res.clearCookie('saharago_auth', { httpOnly:true, secure:process.env.NODE_ENV === 'production' || Boolean(process.env.RENDER), sameSite:'lax', path:'/' });
+  res.json({ ok:true });
 });
 
 app.get('/api/status', (req, res) => {
@@ -104,6 +142,9 @@ function calcularPrecio(origen, destino) {
 }
 
 app.post('/api/viajes', async (req, res) => {
+  const perfil = readSession(req);
+  if (!perfil) return res.status(401).json({ ok:false, message:'Entra en tu cuenta o crea una para confirmar la solicitud' });
+  if (perfil.tipo !== 'pasajero') return res.status(403).json({ ok:false, message:'Necesitas una cuenta de pasajero para solicitar un viaje' });
   const body = req.body || {};
   if (!campamentos.includes(body.origen) || !campamentos.includes(body.destino) || body.origen === body.destino) {
     return res.status(400).json({ ok:false, message:'Elige un origen y un destino válidos y diferentes' });
@@ -122,8 +163,8 @@ app.post('/api/viajes', async (req, res) => {
     precio: calcularPrecio(req.body.origen, req.body.destino),
     tipoReserva: req.body.tipoReserva === 'programada' ? 'programada' : 'ahora',
     fechaHora: req.body.fechaHora || null,
-    pasajero: req.body.pasajero || null,
-    pasajeroId: req.body.pasajeroId || null,
+    pasajero: perfil,
+    pasajeroId: perfil.id,
     ubicacionPasajero: req.body.ubicacion || null,
     ubicacionConductor: null,
     estado: 'solicitado',
