@@ -328,7 +328,7 @@ async function updateDriverTrip(id,estado,ubicacionConductor=null,conductor=null
       body: JSON.stringify({estado, conductorUbicacion: ubicacionConductor, conductor, conductorId:account?.tipo==='conductor'?account.id:null, pagoEstado})
     });
     const datos = await respuesta.json();
-    if(!datos.ok){ alert('No se pudo actualizar el viaje.'); return; }
+    if(!datos.ok){ alert(datos.message || 'No se pudo actualizar el viaje.'); return; }
     showDriverTrip(datos.viaje);
   } catch(error) {
     console.error(error);
@@ -337,14 +337,17 @@ async function updateDriverTrip(id,estado,ubicacionConductor=null,conductor=null
 }
 function showDriverTrip(viaje){
   currentDriverTripId=viaje.id;
-  if(viaje.estado==='finalizado') stopLocationSharing();
+  if(['finalizado','cancelado'].includes(viaje.estado)) {
+    stopLocationSharing();
+    clearInterval(driverPollTimer);driverPollTimer=null;
+  }
   else {startLocationSharing(viaje.id);if(!driverPollTimer)driverPollTimer=setInterval(checkDriverTrip,2000);}
   const siguiente={
     aceptado:{texto:'📍 He llegado al punto de recogida',estado:'conductor_llegado'},
     conductor_llegado:{texto:'▶️ Iniciar viaje',estado:'en_curso'},
     en_curso:{texto:'🏁 Finalizar viaje',estado:'finalizado'}
   }[viaje.estado];
-  const titulo={aceptado:'¡Viaje aceptado!',conductor_llegado:'Has llegado al pasajero',en_curso:'Viaje en curso',finalizado:'¡Viaje finalizado!'}[viaje.estado];
+  const titulo={aceptado:'¡Viaje aceptado!',conductor_llegado:'Has llegado al pasajero',en_curso:'Viaje en curso',finalizado:'¡Viaje finalizado!',cancelado:'Viaje cancelado'}[viaje.estado];
   document.querySelector('#driverStatus').innerHTML=`
     <div class="notice">
       ✅ <b>${titulo}</b><br><br>

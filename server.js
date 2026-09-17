@@ -21,7 +21,11 @@ function hashPassword(password) { const salt = crypto.randomBytes(16).toString('
 function checkPassword(password, saved) { try { const [salt, hash] = saved.split(':'); const candidate = crypto.scryptSync(password, salt, 64); const actual = Buffer.from(hash, 'hex'); return actual.length === candidate.length && crypto.timingSafeEqual(actual, candidate); } catch (error) { return false; } }
 
 app.use(express.json());
-app.use(express.static(__dirname));
+// Only browser assets are public; never expose server code or trip storage.
+for (const asset of ['index.html', 'app.js', 'styles.css', 'manifest.json', 'service-worker.js']) {
+  app.get('/' + asset, (req, res) => res.sendFile(path.join(__dirname, asset)));
+}
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.post('/api/cuentas/registro', async (req, res) => {
   const { nombre, telefono, password, tipo, vehiculo, matricula } = req.body;
@@ -100,6 +104,16 @@ function calcularPrecio(origen, destino) {
 }
 
 app.post('/api/viajes', async (req, res) => {
+  const body = req.body || {};
+  if (!campamentos.includes(body.origen) || !campamentos.includes(body.destino) || body.origen === body.destino) {
+    return res.status(400).json({ ok:false, message:'Elige un origen y un destino válidos y diferentes' });
+  }
+  if (body.pasajeros !== undefined && (!Number.isSafeInteger(body.pasajeros) || body.pasajeros < 1)) {
+    return res.status(400).json({ ok:false, message:'El número de pasajeros debe ser un entero positivo' });
+  }
+  if (body.tipoReserva === 'programada' && (!body.fechaHora || !Number.isFinite(Date.parse(body.fechaHora)) || Date.parse(body.fechaHora) <= Date.now())) {
+    return res.status(400).json({ ok:false, message:'Elige una fecha y hora futuras para la reserva' });
+  }
   const viaje = {
     id: crypto.randomUUID(),
     origen: req.body.origen,
@@ -166,13 +180,33 @@ app.put('/api/viajes/:id', async (req, res) => {
   }
 
   const estadosValidos = ['aceptado', 'conductor_llegado', 'en_curso', 'finalizado', 'cancelado'];
-  const nuevoEstado = req.body.estado || 'aceptado';
+  const body = req.body || {};
+  const nuevoEstado = body.estado;
 
   if (!estadosValidos.includes(nuevoEstado)) {
     return res.status(400).json({
       ok: false,
       message: 'Estado de viaje no válido'
     });
+  }
+
+  const transiciones = {
+    solicitado: ['aceptado', 'cancelado'],
+    aceptado: ['conductor_llegado', 'cancelado'],
+    conductor_llegado: ['en_curso', 'cancelado'],
+    en_curso: ['finalizado', 'cancelado'],
+    finalizado: [],
+    cancelado: []
+  };
+  const confirmarPago = viaje.estado === 'finalizado' && nuevoEstado === 'finalizado' && body.pagoEstado === 'pagado';
+  if (!confirmarPago && !(transiciones[viaje.estado] || []).includes(nuevoEstado)) {
+    return res.status(409).json({ ok:false, message:'El viaje ya cambió de estado. Actualiza la pantalla antes de continuar.' });
+  }
+  if (body.pagoEstado != null && (!['pendiente', 'pagado'].includes(body.pagoEstado) || (body.pagoEstado === 'pagado' && nuevoEstado !== 'finalizado') || (viaje.pagoEstado === 'pagado' && body.pagoEstado !== 'pagado'))) {
+    return res.status(400).json({ ok:false, message:'El pago solo puede confirmarse al finalizar el viaje' });
+  }
+  if (viaje.conductorId && body.conductorId && viaje.conductorId !== body.conductorId) {
+    return res.status(409).json({ ok:false, message:'Este viaje ya tiene otro conductor asignado' });
   }
 
   viaje.estado = nuevoEstado;
@@ -200,7 +234,10 @@ app.put('/api/viajes/:id/ubicacion-conductor', async (req, res) => {
   if (!viaje) {
     return res.status(404).json({ ok: false, message: 'Viaje no encontrado' });
   }
-  if (!ubicacion || typeof ubicacion.lat !== 'number' || typeof ubicacion.lng !== 'number') {
+  if (!['aceptado', 'conductor_llegado', 'en_curso'].includes(viaje.estado)) {
+    return res.status(409).json({ ok:false, message:'El viaje no está activo' });
+  }
+  if (!ubicacion || !Number.isFinite(ubicacion.lat) || !Number.isFinite(ubicacion.lng) || Math.abs(ubicacion.lat) > 90 || Math.abs(ubicacion.lng) > 180) {
     return res.status(400).json({ ok: false, message: 'Ubicación no válida' });
   }
 
@@ -223,3 +260,4 @@ app.put('/api/viajes/:id/valoracion', async (req, res) => {
 app.listen(PORT, () => {
   console.log('SaharaGo funcionando en http://localhost:3000');
 });
+
