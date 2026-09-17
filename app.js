@@ -157,7 +157,7 @@ function ratingForm(viaje,actor){
   const existente=actor==='pasajero'?viaje.valoracionConductor:viaje.valoracionPasajero;
   if(existente) return `<div class="notice">⭐ ${existente.estrellas}/5${existente.comentario?`<br>${existente.comentario}`:''}</div>`;
   const persona=actor==='pasajero'?(lang==='es'?'Valora al conductor':'قيّم السائق'):(lang==='es'?'Valora al pasajero':'قيّم الراكب');
-  return `<div class="notice"><b>⭐ ${persona}</b><br><select id="rating-${actor}"><option value="5">5 ⭐</option><option value="4">4 ⭐</option><option value="3">3 ⭐</option><option value="2">2 ⭐</option><option value="1">1 ⭐</option></select><input id="comment-${actor}" placeholder="${lang==='es'?'Comentario opcional':'تعليق اختياري'}"><button class="primary" onclick="rateTrip(${viaje.id},'${actor}')">${lang==='es'?'Enviar valoración':'إرسال التقييم'}</button></div>`;
+  return `<div class="notice"><b>⭐ ${persona}</b><br><select id="rating-${actor}"><option value="5">5 ⭐</option><option value="4">4 ⭐</option><option value="3">3 ⭐</option><option value="2">2 ⭐</option><option value="1">1 ⭐</option></select><input id="comment-${actor}" placeholder="${lang==='es'?'Comentario opcional':'تعليق اختياري'}"><button class="primary" onclick="rateTrip('${viaje.id}','${actor}')">${lang==='es'?'Enviar valoración':'إرسال التقييم'}</button></div>`;
 }
 async function rateTrip(id,actor){
   try{
@@ -266,13 +266,13 @@ function driver(x){
             ${scheduleText(v)}<br>
             💰 ${v.precio||500} DA<br><br>
 
-            <button class="primary" onclick="aceptarViaje(${v.id})">
+            <button class="primary" onclick="aceptarViaje('${v.id}')">
               ${lang==='es'?'Aceptar viaje':'قبول الرحلة'}
             </button>
           </div>
         `).join('')}
-        ${asignados.length?`<h3>✅ ${lang==='es'?'Mis reservas aceptadas':'حجوزاتي المقبولة'}</h3>${asignados.map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br>${scheduleText(v)}<br>💰 ${v.precio||500} DA<br><button class="primary" onclick="openDriverRating(${v.id})">${lang==='es'?'Ver viaje':'عرض الرحلة'}</button></div>`).join('')}`:''}
-        ${porValorar.length?`<h3>⭐ ${lang==='es'?'Valoraciones pendientes':'تقييمات معلقة'}</h3>${porValorar.map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br><button class="primary" onclick="openDriverRating(${v.id})">${lang==='es'?'Valorar pasajero':'تقييم الراكب'}</button></div>`).join('')}`:''}
+        ${asignados.length?`<h3>✅ ${lang==='es'?'Mis reservas aceptadas':'حجوزاتي المقبولة'}</h3>${asignados.map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br>${scheduleText(v)}<br>💰 ${v.precio||500} DA<br><button class="primary" onclick="openDriverRating('${v.id}')">${lang==='es'?'Ver viaje':'عرض الرحلة'}</button></div>`).join('')}`:''}
+        ${porValorar.length?`<h3>⭐ ${lang==='es'?'Valoraciones pendientes':'تقييمات معلقة'}</h3>${porValorar.map(v=>`<div class="notice"><b>${v.origen} → ${v.destino}</b><br><button class="primary" onclick="openDriverRating('${v.id}')">${lang==='es'?'Valorar pasajero':'تقييم الراكب'}</button></div>`).join('')}`:''}
       </div>
     `;
     pendientes.forEach(v=>showReputation('passengerReputation-'+v.id,'pasajero',v.pasajero?.nombre));
@@ -353,9 +353,9 @@ function showDriverTrip(viaje){
       🛰️ GPS pasajero: ${locationText(viaje.ubicacionPasajero)}<br>
       <div id="tripMap" class="trip-map"></div>
       💰 ${viaje.precio||500} DA · 💵 ${viaje.metodoPago||'Efectivo'} (${viaje.pagoEstado||'pendiente'})
-      ${viaje.estado==='finalizado'&&viaje.pagoEstado!=='pagado'?`<br><br><button class="primary" onclick="markPaid(${viaje.id})">${lang==='es'?'Marcar como pagado':'تأكيد الدفع'}</button>`:''}
+      ${viaje.estado==='finalizado'&&viaje.pagoEstado!=='pagado'?`<br><br><button class="primary" onclick="markPaid('${viaje.id}')">${lang==='es'?'Marcar como pagado':'تأكيد الدفع'}</button>`:''}
       ${viaje.estado==='finalizado'?ratingForm(viaje,'conductor'):''}
-      ${siguiente?`<br><br><button class="primary" onclick="updateDriverTrip(${viaje.id}, '${siguiente.estado}')">${siguiente.texto}</button>`:''}
+      ${siguiente?`<br><br><button class="primary" onclick="updateDriverTrip('${viaje.id}', '${siguiente.estado}')">${siguiente.texto}</button>`:''}
     </div>`;
   setTimeout(()=>showTripMap(viaje),0);
 }
