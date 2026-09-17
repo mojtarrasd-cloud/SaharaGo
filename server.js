@@ -135,21 +135,26 @@ async function guardarViaje(viaje, existe = false) {
   return resultado[0]?.datos || viaje;
 }
 
-const campamentos = ['Smara / السمارة', 'El Aaiún / العيون', 'Auserd / أوسرد', 'Dajla / الداخلة', 'Rabuni / الرابوني'];
-function calcularPrecio(origen, destino) {
-  const distancia = Math.abs(campamentos.indexOf(origen) - campamentos.indexOf(destino));
-  return 300 + (distancia * 200);
-}
+const campamentos = ['Smara / السمارة', 'El Aaiún / العيون', 'Auserd / أوسرد', 'Dajla / الداخلة', 'Rabuni / الرابوني', 'Tindouf / تندوف'];
+
 
 app.post('/api/viajes', async (req, res) => {
   const perfil = readSession(req);
   if (!perfil) return res.status(401).json({ ok:false, message:'Entra en tu cuenta o crea una para confirmar la solicitud' });
   if (perfil.tipo !== 'pasajero') return res.status(403).json({ ok:false, message:'Necesitas una cuenta de pasajero para solicitar un viaje' });
   const body = req.body || {};
-  if (!campamentos.includes(body.origen) || !campamentos.includes(body.destino) || body.origen === body.destino) {
-    return res.status(400).json({ ok:false, message:'Elige un origen y un destino válidos y diferentes' });
+  if (!campamentos.includes(body.destino)) {
+    return res.status(400).json({ ok:false, message:'Elige un campamento o Tindouf como destino' });
   }
-  if (body.pasajeros !== undefined && (!Number.isSafeInteger(body.pasajeros) || body.pasajeros < 1)) {
+  const ubicacion = body.ubicacion;
+  if (!ubicacion || !Number.isFinite(ubicacion.lat) || !Number.isFinite(ubicacion.lng) || Math.abs(ubicacion.lat) > 90 || Math.abs(ubicacion.lng) > 180) {
+    return res.status(400).json({ ok:false, message:'Activa el GPS y permite el acceso a tu ubicación para solicitar el viaje' });
+  }
+  const modoViaje = body.modoViaje || 'pasajeros';
+  if (!['completo', 'pasajeros'].includes(modoViaje)) {
+    return res.status(400).json({ ok:false, message:'Elige coche completo o por pasajeros' });
+  }
+  if (modoViaje === 'pasajeros' && (!Number.isSafeInteger(body.pasajeros) || body.pasajeros < 1)) {
     return res.status(400).json({ ok:false, message:'El número de pasajeros debe ser un entero positivo' });
   }
   if (body.tipoReserva === 'programada' && (!body.fechaHora || !Number.isFinite(Date.parse(body.fechaHora)) || Date.parse(body.fechaHora) <= Date.now())) {
@@ -157,15 +162,17 @@ app.post('/api/viajes', async (req, res) => {
   }
   const viaje = {
     id: crypto.randomUUID(),
-    origen: req.body.origen,
+    origen: 'Recogida GPS / الانطلاق من موقع GPS',
     destino: req.body.destino,
-    pasajeros: req.body.pasajeros || 1,
-    precio: calcularPrecio(req.body.origen, req.body.destino),
+    pasajeros: modoViaje === 'completo' ? null : body.pasajeros,
+    modoViaje,
+    precio: 0,
+    precioPendiente: true,
     tipoReserva: req.body.tipoReserva === 'programada' ? 'programada' : 'ahora',
     fechaHora: req.body.fechaHora || null,
     pasajero: perfil,
     pasajeroId: perfil.id,
-    ubicacionPasajero: req.body.ubicacion || null,
+    ubicacionPasajero: { lat:ubicacion.lat, lng:ubicacion.lng },
     ubicacionConductor: null,
     estado: 'solicitado',
     metodoPago: 'Efectivo',
@@ -240,6 +247,9 @@ app.put('/api/viajes/:id', async (req, res) => {
     cancelado: []
   };
   const confirmarPago = viaje.estado === 'finalizado' && nuevoEstado === 'finalizado' && body.pagoEstado === 'pagado';
+  if (body.pagoEstado === 'pagado' && viaje.precioPendiente) {
+    return res.status(400).json({ ok:false, message:'El precio está pendiente de confirmar' });
+  }
   if (!confirmarPago && !(transiciones[viaje.estado] || []).includes(nuevoEstado)) {
     return res.status(409).json({ ok:false, message:'El viaje ya cambió de estado. Actualiza la pantalla antes de continuar.' });
   }
