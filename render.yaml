@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: saharago
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: 20

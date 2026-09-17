@@ -1,0 +1,1 @@
+SaharaGo MVP v2: prototipo bilingüe con reserva fecha/hora y flujo simulado de conductor. La conexión real entre dispositivos requiere backend, base de datos, autenticación, GPS en tiempo real y notificaciones.

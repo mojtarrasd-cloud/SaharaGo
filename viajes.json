@@ -1,0 +1,422 @@
+[
+  {
+    "id": 1789608843332,
+    "origen": "Smara / السمارة",
+    "destino": "Rabuni / الرابوني",
+    "pasajeros": 1,
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "creadoEn": "2026-09-17T00:00:00.000Z",
+    "valoracionPasajero": {
+      "estrellas": 5,
+      "comentario": "saaa",
+      "creadaEn": "2026-09-17T02:08:55.804Z"
+    },
+    "pagoEstado": "pagado"
+  },
+  {
+    "id": 1789609344514,
+    "origen": "Smara / السمارة",
+    "destino": "Dajla / الداخلة",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 39.5915,
+      "lng": 2.6606
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "creadoEn": "2026-09-17T01:42:24.514Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789609576998,
+    "origen": "Smara / السمارة",
+    "destino": "Dajla / الداخلة",
+    "pasajeros": 2,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "conductor_llegado",
+    "creadoEn": "2026-09-17T01:46:16.998Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789609729750,
+    "origen": "Smara / السمارة",
+    "destino": "Auserd / أوسرد",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "creadoEn": "2026-09-17T01:48:49.750Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "pagoEstado": "pagado",
+    "valoracionPasajero": {
+      "estrellas": 1,
+      "comentario": "",
+      "creadaEn": "2026-09-17T02:28:32.599Z"
+    }
+  },
+  {
+    "id": 1789609879100,
+    "origen": "Smara / السمارة",
+    "destino": "Rabuni / الرابوني",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "aceptado",
+    "creadoEn": "2026-09-17T01:51:19.100Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789610033883,
+    "origen": "Smara / السمارة",
+    "destino": "Dajla / الداخلة",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "cancelado",
+    "creadoEn": "2026-09-17T01:53:53.883Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "motivoCancelacion": "Cancelado por el pasajero",
+    "canceladoEn": "2026-09-17T01:54:10.015Z"
+  },
+  {
+    "id": 1789610484685,
+    "origen": "Smara / السمارة",
+    "destino": "Auserd / أوسرد",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 39.5915,
+      "lng": 2.6606
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pagado",
+    "creadoEn": "2026-09-17T02:01:24.685Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789610711291,
+    "origen": "Smara / السمارة",
+    "destino": "Dajla / الداخلة",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pagado",
+    "creadoEn": "2026-09-17T02:05:11.291Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "valoracionConductor": {
+      "estrellas": 5,
+      "comentario": "",
+      "creadaEn": "2026-09-17T02:05:36.332Z"
+    }
+  },
+  {
+    "id": 1789611061666,
+    "origen": "Smara / السمارة",
+    "destino": "Auserd / أوسرد",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "cancelado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pendiente",
+    "creadoEn": "2026-09-17T02:11:01.667Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "motivoCancelacion": "Cancelado por el pasajero",
+    "canceladoEn": "2026-09-17T02:11:28.649Z"
+  },
+  {
+    "id": 1789611215205,
+    "origen": "Smara / السمارة",
+    "destino": "Auserd / أوسرد",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "aceptado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pendiente",
+    "creadoEn": "2026-09-17T02:13:35.205Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789611294463,
+    "origen": "Smara / السمارة",
+    "destino": "Auserd / أوسرد",
+    "pasajeros": 1,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "aceptado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pendiente",
+    "creadoEn": "2026-09-17T02:14:54.463Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    }
+  },
+  {
+    "id": 1789611577559,
+    "origen": "Smara / السمارة",
+    "destino": "Smara / السمارة",
+    "pasajeros": 1,
+    "precio": 300,
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pagado",
+    "creadoEn": "2026-09-17T02:19:37.559Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "valoracionPasajero": {
+      "estrellas": 5,
+      "comentario": "aa",
+      "creadaEn": "2026-09-17T02:20:18.104Z"
+    },
+    "valoracionConductor": {
+      "estrellas": 5,
+      "comentario": "aaaa",
+      "creadaEn": "2026-09-17T02:20:25.461Z"
+    }
+  },
+  {
+    "id": 1789611799513,
+    "origen": "Smara / السمارة",
+    "destino": "Smara / السمارة",
+    "pasajeros": 1,
+    "precio": 300,
+    "tipoReserva": "programada",
+    "fechaHora": "2026-09-25T09:28",
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "finalizado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pagado",
+    "creadoEn": "2026-09-17T02:23:19.513Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "valoracionPasajero": {
+      "estrellas": 5,
+      "comentario": "",
+      "creadaEn": "2026-09-17T02:24:02.138Z"
+    },
+    "valoracionConductor": {
+      "estrellas": 5,
+      "comentario": "",
+      "creadaEn": "2026-09-17T02:27:23.434Z"
+    }
+  },
+  {
+    "id": 1789612066885,
+    "origen": "Smara / السمارة",
+    "destino": "Smara / السمارة",
+    "pasajeros": 1,
+    "precio": 300,
+    "tipoReserva": "programada",
+    "fechaHora": "2026-09-30T04:32",
+    "pasajero": {
+      "nombre": "mohi",
+      "telefono": "678544567"
+    },
+    "ubicacionPasajero": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "ubicacionConductor": {
+      "lat": 38.910427,
+      "lng": 1.227127
+    },
+    "estado": "cancelado",
+    "metodoPago": "Efectivo",
+    "pagoEstado": "pendiente",
+    "creadoEn": "2026-09-17T02:27:46.885Z",
+    "conductor": {
+      "nombre": "lilo",
+      "telefono": "2828181828",
+      "vehiculo": "Vehículo",
+      "matricula": "—"
+    },
+    "motivoCancelacion": "Cancelado por el pasajero",
+    "canceladoEn": "2026-09-17T02:28:43.565Z"
+  }
+]

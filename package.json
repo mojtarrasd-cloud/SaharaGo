@@ -1,0 +1,17 @@
+{
+  "name": "saharago_mvp_v2",
+  "version": "1.0.0",
+  "description": "SaharaGo MVP v2: prototipo bilingüe con reserva fecha/hora y flujo simulado de conductor. La conexión real entre dispositivos requiere backend, base de datos, autenticación, GPS en tiempo real y notificaciones.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
