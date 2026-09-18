@@ -146,8 +146,12 @@ app.post('/api/viajes', async (req, res) => {
   if (!campamentos.includes(body.destino)) {
     return res.status(400).json({ ok:false, message:'Elige un campamento o Tindouf como destino' });
   }
-  const ubicacion = body.ubicacion;
-  if (!ubicacion || !Number.isFinite(ubicacion.lat) || !Number.isFinite(ubicacion.lng) || Math.abs(ubicacion.lat) > 90 || Math.abs(ubicacion.lng) > 180) {
+  const tipoRecogida = body.tipoRecogida || (campamentos.includes(body.origen) ? 'campamento' : 'gps');
+  if (!['campamento','gps'].includes(tipoRecogida) || (tipoRecogida === 'campamento' && !campamentos.includes(body.origen))) {
+    return res.status(400).json({ok:false,message:'Elige un campamento o Tindouf como recogida'});
+  }
+  const ubicacion = tipoRecogida === 'gps' ? body.ubicacion : null;
+  if (tipoRecogida === 'gps' && (!ubicacion || !Number.isFinite(ubicacion.lat) || !Number.isFinite(ubicacion.lng) || Math.abs(ubicacion.lat) > 90 || Math.abs(ubicacion.lng) > 180)) {
     return res.status(400).json({ ok:false, message:'Activa el GPS y permite el acceso a tu ubicación para solicitar el viaje' });
   }
   const modoViaje = body.modoViaje || 'pasajeros';
@@ -162,7 +166,8 @@ app.post('/api/viajes', async (req, res) => {
   }
   const viaje = {
     id: crypto.randomUUID(),
-    origen: 'Recogida GPS / الانطلاق من موقع GPS',
+    origen: tipoRecogida === 'gps' ? 'Recogida GPS / الانطلاق من موقع GPS' : body.origen,
+    tipoRecogida,
     destino: req.body.destino,
     pasajeros: modoViaje === 'completo' ? null : body.pasajeros,
     modoViaje,
@@ -172,7 +177,7 @@ app.post('/api/viajes', async (req, res) => {
     fechaHora: req.body.fechaHora || null,
     pasajero: perfil,
     pasajeroId: perfil.id,
-    ubicacionPasajero: { lat:ubicacion.lat, lng:ubicacion.lng },
+    ubicacionPasajero: ubicacion ? { lat:ubicacion.lat, lng:ubicacion.lng } : null,
     ubicacionConductor: null,
     estado: 'solicitado',
     metodoPago: 'Efectivo',
@@ -216,6 +221,8 @@ app.get('/api/reputacion', async (req, res) => {
 });
 app.put('/api/viajes/:id', async (req, res) => {
   const id = req.params.id;
+  const actor = readSession(req);
+  if (!actor) return res.status(401).json({ok:false,message:'Entra en tu cuenta para gestionar el viaje'});
   try {
   const todos = await obtenerViajes();
   const viaje = todos.find(v => v.id === id);
@@ -236,6 +243,10 @@ app.put('/api/viajes/:id', async (req, res) => {
       ok: false,
       message: 'Estado de viaje no válido'
     });
+  }
+  const esAceptacion = nuevoEstado === 'aceptado' && viaje.estado === 'solicitado';
+  if (esAceptacion ? actor.tipo !== 'conductor' : (actor.id !== viaje.conductorId && !(nuevoEstado === 'cancelado' && actor.id === viaje.pasajeroId))) {
+    return res.status(403).json({ok:false,message:'No puedes realizar esta acción en este viaje'});
   }
 
   const transiciones = {
@@ -264,10 +275,10 @@ app.put('/api/viajes/:id', async (req, res) => {
   if (req.body.conductorUbicacion) {
     viaje.ubicacionConductor = req.body.conductorUbicacion;
   }
-  if (req.body.conductor) {
-    viaje.conductor = req.body.conductor;
+  if (esAceptacion) {
+    viaje.conductor = publicProfile(actor);
+    viaje.conductorId = actor.id;
   }
-  if (req.body.conductorId) viaje.conductorId = req.body.conductorId;
   if (nuevoEstado === 'cancelado') {
     viaje.motivoCancelacion = req.body.motivoCancelacion || 'Sin motivo indicado';
     viaje.canceladoEn = new Date().toISOString();
@@ -277,6 +288,23 @@ app.put('/api/viajes/:id', async (req, res) => {
   }
   res.json({ ok: true, viaje: await guardarViaje(viaje, true) });
   } catch (error) { console.error(error); res.status(500).json({ok:false,message:'No se pudo actualizar el viaje'}); }
+});
+app.get('/api/viajes/:id/contacto', async (req,res) => {
+  res.set('Cache-Control','no-store');
+  const actor=readSession(req);
+  if(!actor)return res.status(401).json({ok:false,message:'Entra en tu cuenta para ver el contacto'});
+  try {
+    const viaje=(await obtenerViajes()).find(v=>v.id===req.params.id);
+    if(!viaje)return res.status(404).json({ok:false,message:'Viaje no encontrado'});
+    if(actor.id!==viaje.pasajeroId&&actor.id!==viaje.conductorId)return res.status(403).json({ok:false,message:'Este contacto solo está disponible para los participantes del viaje'});
+    if(!['aceptado','conductor_llegado','en_curso'].includes(viaje.estado))return res.status(409).json({ok:false,message:'El contacto estará disponible cuando el conductor acepte el viaje'});
+    const otroId=actor.id===viaje.pasajeroId?viaje.conductorId:viaje.pasajeroId;
+    if(!otroId)return res.status(404).json({ok:false,message:'No hay un teléfono disponible para este viaje'});
+    const [perfil]=await supabase(`profiles?id=eq.${encodeURIComponent(otroId)}&select=telefono`);
+    const telefono=String(perfil?.telefono||'').replace(/[\s().-]/g,'');
+    if(!/^\+?\d{6,15}$/.test(telefono))return res.status(404).json({ok:false,message:'No hay un teléfono válido disponible'});
+    res.json({ok:true,telefono});
+  }catch(error){res.status(503).json({ok:false,message:'No se pudo cargar el teléfono. Inténtalo de nuevo.'});}
 });
 app.put('/api/viajes/:id/ubicacion-conductor', async (req, res) => {
   try { const viaje = (await obtenerViajes()).find(v => v.id === req.params.id);

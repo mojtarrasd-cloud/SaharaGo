@@ -1,16 +1,19 @@
+function uiIcon(name){const paths={arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',pin:'<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',person:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',car:'<path d="m4 10 2-6h12l2 6M3 10h18v8H3zM6 18v3m12-3v3M6 14h2m8 0h2"/>',bell:'<path d="M6 9a6 6 0 0 1 12 0v6l2 2H4l2-2zm4 11h4"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>'};return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.car)+'</svg>';}
+function carArt(){return '<svg class="car-art" viewBox="0 0 240 112" aria-hidden="true"><ellipse cx="121" cy="97" rx="99" ry="8" fill="#000" opacity=".08"/><path d="m30 65 19-8 25-30h73l37 30 32 8 8 23H22z" fill="#d9d9d9"/><path d="m77 32-19 25h47V32zm36 0v25h59l-29-25z" fill="#282828"/><path d="M24 74h194M113 60v23" stroke="#999" stroke-width="2"/><rect x="118" y="64" width="12" height="3" rx="1.5" fill="#777"/><path d="M26 65h19v7H24m179-6h14l3 8h-17" fill="#fafafa"/><circle cx="61" cy="87" r="16" fill="#161616"/><circle cx="61" cy="87" r="7" fill="#aaa"/><circle cx="184" cy="87" r="16" fill="#161616"/><circle cx="184" cy="87" r="7" fill="#aaa"/></svg>';}
+function uiSafe(value){return String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 const camps=['Smara / السمارة','El Aaiún / العيون','Auserd / أوسرد','Dajla / الداخلة','Rabuni / الرابوني','Tindouf / تندوف'];
 const E={title:'Tu viaje, más cerca',sub:'Viajes dentro de los campamentos, entre ellos y a Tindouf.',loc:'Activa y permite la ubicación para usar Taxily.',origin:'Origen',dest:'Destino',when:'¿Cuándo quieres viajar?',now:'Ahora',later:'Reservar',date:'Fecha',time:'Hora',pass:'Pasajeros',request:'Solicitar viaje',role:'¿Cómo quieres usar Taxily?',passenger:'Pasajero',driver:'Conductor',history:'Historial de viajes',search:'Buscando conductor...',found:'¡Conductor encontrado!',confirm:'Confirmar viaje',back:'Volver'};
 const A={title:'رحلتك أقرب إليك',sub:'رحلات داخل المخيمات وبينها وإلى تندوف.',loc:'فعّل الموقع واسمح للتطبيق باستخدامه.',origin:'نقطة الانطلاق',dest:'الوجهة',when:'متى تريد السفر؟',now:'الآن',later:'حجز',date:'التاريخ',time:'الوقت',pass:'عدد الركاب',request:'طلب الرحلة',role:'كيف تريد استخدام Taxily؟',passenger:'راكب',driver:'سائق',history:'سجل الرحلات',search:'جاري البحث عن سائق...',found:'تم العثور على سائق!',confirm:'تأكيد الرحلة',back:'رجوع'};
 let lang='es',role=null,accountMode=null,account=loadAccount(),timing='now',o='',d='',currentTripId=null,pollTimer=null,lastTripStatus='',driverLocation=null,tripMap=null,driverMarker=null,locationWatcher=null,sharingTripId=null,passengerConfirmed=false,profileRole=null,driverPollTimer=null,currentDriverTripId=null,driverNoticeTimer=null,knownPendingTrips=new Set(),reminderSeen=new Set(),currentPrice=300;
 const t=()=>lang==='es'?E:A;
-let bookingDraft=null, bookingAccess=false, submittingTrip=false, rideMode='pasajeros';
+let bookingDraft=null, bookingAccess=false, submittingTrip=false, rideMode='pasajeros', pickupMode='campamento';
 function rememberBooking(){
   if(!document.querySelector('#d'))return;
-  bookingDraft={destino:document.querySelector('#d').value,pasajeros:document.querySelector('#pax')?.value||bookingDraft?.pasajeros||'1',fecha:document.querySelector('#date')?.value||bookingDraft?.fecha||'',hora:document.querySelector('#time')?.value||bookingDraft?.hora||''};
+  bookingDraft={origen:document.querySelector('#o')?.value||bookingDraft?.origen||'',destino:document.querySelector('#d').value,pasajeros:document.querySelector('#pax')?.value||bookingDraft?.pasajeros||'1',fecha:document.querySelector('#date')?.value||bookingDraft?.fecha||'',hora:document.querySelector('#time')?.value||bookingDraft?.hora||''};
 }
 function restoreBooking(){
   if(!bookingDraft||!document.querySelector('#d'))return;
-  for(const [id,key] of [['d','destino'],['pax','pasajeros'],['date','fecha'],['time','hora']]){
+  for(const [id,key] of [['o','origen'],['d','destino'],['pax','pasajeros'],['date','fecha'],['time','hora']]){
     const element=document.querySelector('#'+id);if(element)element.value=bookingDraft[key];
   }
 }
@@ -31,7 +34,8 @@ function getProfile(tipo){if(account&&account.tipo===tipo)return account;try{ret
 function showNotice(message){const anterior=document.querySelector('.toast');if(anterior)anterior.remove();const aviso=document.createElement('div');aviso.className='toast';aviso.textContent=message;document.body.appendChild(aviso);setTimeout(()=>aviso.remove(),4000);if('Notification' in window&&Notification.permission==='granted')new Notification('Taxily',{body:message});}
 async function enableNotifications(){if(!('Notification' in window)){alert('Las notificaciones no están disponibles.');return;}const permiso=await Notification.requestPermission();showNotice(permiso==='granted'?'🔔 Notificaciones activadas.':'Las notificaciones no fueron activadas.');}
 function render(){let x=t();document.body.classList.toggle('rtl',lang==='ar');document.querySelector('#lang').textContent=lang==='es'?'العربية':'Español';document.querySelector('#screen').innerHTML=accountMode?accountForm():!role?home(x):role==='account'?`<div class="card"><h2>👤 Mi perfil</h2><p><b>${account.nombre}</b><br>${account.tipo==='conductor'?'🚗 Conductor':'👤 Pasajero'}${account.vehiculo?`<br>${account.vehiculo}${account.matricula?' · '+account.matricula:''}`:''}</p><div id="accountStats" class="notice">Cargando datos...</div><button class="secondary" onclick="role=null;render()">Volver</button></div>`:role==='profile'?profileForm(x):role==='p'?booking(x):role==='d'?driver(x):history(x);if(role==='h')loadHistory();if(role==='p'&&!accountMode)restoreBooking();}
-function home(x){const access=account?`<div class="notice">👋 ${account.nombre}<br><button class="secondary" style="margin-top:8px" onclick="showMyProfile()">Mi perfil</button> <button class="secondary" style="margin-top:8px" onclick="logout()">Salir</button></div>`:`<button class="primary" onclick="accountMode='login';render()">Entrar</button><button class="secondary" style="width:100%;margin-top:12px" onclick="accountMode='register';render()">Crear cuenta</button>`;const action=account?(account.tipo==='conductor'?`<button class="primary" onclick="selectRole('d')">🚗 Abrir zona de conductor</button>`:`<button class="primary" onclick="selectRole('p')">👤 Pedir un viaje</button>`):`<div class="choice"><button onclick="selectRole('p')">👤 ${x.passenger}</button><button onclick="selectRole('d')">🚗 ${x.driver}</button></div>`;return `<h1>${x.title}</h1><p>${x.sub}</p>${access}<div class="notice">📍 ${x.loc}</div><button class="primary" onclick="loc()">📍 ${lang==='es'?'Activar ubicación':'تفعيل الموقع'}</button><button class="secondary" style="width:100%;margin-top:12px" onclick="enableNotifications()">🔔 ${lang==='es'?'Activar notificaciones':'تفعيل الإشعارات'}</button><div class="card"><h3>${x.role}</h3>${action}<button class="secondary" style="width:100%;margin-top:12px" onclick="selectRole('h')">📋 ${x.history}</button></div>`}
+function goHome(){rememberBooking();role=null;render();}
+function home(x){const es=lang==='es';return `<section class="home-intro"><span class="eyebrow">${es?'CAMPAMENTOS · TINDOUF':'المخيمات · تندوف'}</span><h1>${es?'¿A dónde<br>vamos?':'إلى أين<br>نذهب؟'}</h1><p>${es?'Tu próximo viaje empieza aquí.':'رحلتك القادمة تبدأ هنا.'}</p></section><button class="ride-hero" onclick="selectRole('p')"><span class="hero-copy"><strong>${es?'Pedir un viaje':'اطلب رحلة'}</strong><span>${es?'Te recogemos donde estés.':'نأتي إليك أينما كنت.'}</span><span class="round-arrow">${uiIcon('arrow')}</span></span>${carArt()}</button><section class="quick-section"><div class="section-title"><h2>${es?'A tu manera':'كما يناسبك'}</h2><span>${es?'Ahora o con reserva':'الآن أو بالحجز'}</span></div><div class="service-grid"><button class="service-tile" onclick="rideMode='completo';selectRole('p')">${uiIcon('car')}<strong>${es?'Coche completo':'السيارة كاملة'}</strong><span>${es?'Un coche para ti':'سيارة لك'}</span></button><button class="service-tile" onclick="rideMode='pasajeros';selectRole('p')">${uiIcon('person')}<strong>${es?'Por pasajeros':'حسب عدد الركاب'}</strong><span>${es?'Elige cuántos viajan':'اختر عدد الركاب'}</span></button></div></section><section class="account-strip">${uiIcon('person')}<div><strong>${account?uiSafe(account.nombre):(es?'Todo listo para viajar':'استعد لرحلتك')}</strong><p>${account?(es?'Tu cuenta de Taxily':'حسابك في Taxily'):(es?'Entra o crea tu cuenta.':'سجّل الدخول أو أنشئ حسابك.')}</p></div><button class="text-button" onclick="${account?'showMyProfile()':"accountMode='login';render()"}">${account?(es?'Ver perfil':'الملف'):(es?'Entrar':'دخول')} ${uiIcon('arrow')}</button></section><nav class="home-links" aria-label="${es?'Más opciones':'خيارات أخرى'}"><button onclick="selectRole('h')">${uiIcon('clock')}<span>${x.history}</span>${uiIcon('arrow')}</button><button onclick="selectRole('d')">${uiIcon('car')}<span>${es?'Zona de conductor':'منطقة السائق'}</span>${uiIcon('arrow')}</button><button onclick="enableNotifications()">${uiIcon('bell')}<span>${es?'Activar notificaciones':'تفعيل الإشعارات'}</span>${uiIcon('arrow')}</button>${account?`<button onclick="logout()">${uiIcon('person')}<span>${es?'Cerrar sesión':'تسجيل الخروج'}</span>${uiIcon('arrow')}</button>`:''}</nav>`}
 function accountForm(){
   const register=accountMode==='register',es=lang==='es';
   const title=register?(es?'Crear cuenta':'إنشاء حساب'):(es?'Entrar':'تسجيل الدخول');
@@ -56,7 +60,8 @@ async function loadHistory(){
 function priceText(viaje){return viaje.precioPendiente||!Number.isFinite(viaje.precio)?(lang==='es'?'Precio pendiente de confirmar':'السعر في انتظار التأكيد'):viaje.precio+' DA';}
 function passengerText(viaje){return viaje.modoViaje==='completo'?(lang==='es'?'Coche completo':'السيارة كاملة'):(viaje.pasajeros||1)+' '+(lang==='es'?'pasajero(s)':'راكب');}
 function scheduleText(viaje){return viaje?.tipoReserva==='programada'&&viaje.fechaHora?`🗓️ ${new Date(viaje.fechaHora).toLocaleString()}`:(lang==='es'?'⏱️ Ahora':'⏱️ الآن');}
-function booking(x){return `<div class="card"><h3>🚕 ${x.passenger}</h3><label>${lang==='es'?'Recogida':'نقطة الانطلاق'}</label><div class="notice" id="pickupStatus" role="status">📍 ${lang==='es'?'Tu ubicación GPS actual. La obtendremos al confirmar la solicitud. Debes permitir el acceso a la ubicación.':'موقعك الحالي عبر GPS. سنحدده عند تأكيد الطلب. يجب السماح بالوصول إلى الموقع.'}</div><label for="d">${x.dest}</label><select id="d"><option value="">${lang==='es'?'Elige un campamento o Tindouf':'اختر مخيماً أو تندوف'}</option>${camps.map((c,i)=>`<option value="${i}">${c}</option>`).join('')}</select><p>${lang==='es'?'El punto exacto de llegada lo acuerdas con el conductor. Puedes elegir el campamento en el que ya te encuentras.':'تتفق مع السائق على نقطة الوصول الدقيقة. يمكنك اختيار المخيم الذي تتواجد فيه.'}</p><label>${x.when}</label><div class="choice"><button class="${timing==='now'?'active':''}" onclick="rememberBooking();timing='now';render()">${x.now}</button><button class="${timing==='later'?'active':''}" onclick="rememberBooking();timing='later';render()">${x.later}</button></div>${timing==='later'?`<label for="date">${x.date}</label><input id="date" type="date"><label for="time">${x.time}</label><input id="time" type="time"><p>${lang==='es'?'La recogida quedará fijada en tu ubicación GPS al hacer esta reserva.':'سيكون موقع الانطلاق هو موقعك عبر GPS عند إجراء هذا الحجز.'}</p>`:''}<label>${lang==='es'?'Tipo de reserva':'نوع الحجز'}</label><div class="choice"><button class="${rideMode==='completo'?'active':''}" onclick="rememberBooking();rideMode='completo';render()">${lang==='es'?'Coche completo':'السيارة كاملة'}</button><button class="${rideMode==='pasajeros'?'active':''}" onclick="rememberBooking();rideMode='pasajeros';render()">${lang==='es'?'Por pasajeros':'حسب عدد الركاب'}</button></div>${rideMode==='pasajeros'?`<label for="pax">${x.pass}</label><input id="pax" type="number" min="1" value="1">`:''}<div class="notice">💰 ${priceText({precioPendiente:true})}<br>💵 ${lang==='es'?'Pago: solo efectivo':'الدفع: نقداً فقط'}</div><button class="primary" id="requestTrip" onclick="trip()">${x.request}</button></div>`}
+function booking(x){const es=lang==='es';return `<div class="booking-page"><button class="back-button" onclick="goHome()">${uiIcon('back')} ${es?'Inicio':'الرئيسية'}</button><div class="page-heading"><span class="eyebrow">${es?'TU PRÓXIMO VIAJE':'رحلتك القادمة'}</span><h1>${es?'Prepara tu viaje':'خطط لرحلتك'}</h1></div><section class="route-card"><div class="route-stop"><span class="route-dot"></span><div><label for="o" class="field-caption">${es?'RECOGIDA':'الانطلاق'}</label>${pickupMode==='gps'?`<strong>${es?'Tu ubicación actual':'موقعك الحالي'}</strong>`:`<select id="o"><option value="">${es?'¿Dónde te recogemos?':'أين نلتقي بك؟'}</option>${camps.map((c,i)=>`<option value="${i}">${c}</option>`).join('')}</select>`}<p id="pickupStatus" role="status">${pickupMode==='gps'?(es?'Usaremos tu GPS al confirmar.':'سنستخدم GPS عند التأكيد.'):(es?'Acuerda el punto exacto por teléfono.':'اتفق على الموقع الدقيق بالهاتف.')}</p><button class="pickup-toggle" onclick="changePickupMode()">${pickupMode==='gps'?(es?'Elegir campamento o Tindouf':'اختر مخيماً أو تندوف'):(es?'Usar mi ubicación GPS':'استخدم موقعي عبر GPS')}</button></div>${uiIcon('pin')}</div><div class="route-stop destination-stop"><span class="route-square"></span><div><label for="d" class="field-caption">${es?'DESTINO':'الوجهة'}</label><select id="d"><option value="">${es?'¿A qué campamento vas?':'إلى أي مخيم تذهب؟'}</option>${camps.map((c,i)=>`<option value="${i}">${c}</option>`).join('')}</select></div></div></section><p class="route-note">${es?'Elige un campamento o Tindouf. El punto de llegada lo acuerdas con el conductor.':'اختر مخيماً أو تندوف. اتفق مع السائق على نقطة الوصول.'}</p><section class="booking-section"><h2>${es?'¿Cuándo?':'متى؟'}</h2><div class="choice time-choice"><button class="${timing==='now'?'active':''}" aria-pressed="${timing==='now'}" onclick="rememberBooking();timing='now';render()">${uiIcon('arrow')} ${x.now}</button><button class="${timing==='later'?'active':''}" aria-pressed="${timing==='later'}" onclick="rememberBooking();timing='later';render()">${uiIcon('clock')} ${x.later}</button></div>${timing==='later'?`<div class="date-grid"><div><label for="date">${x.date}</label><input id="date" type="date"></div><div><label for="time">${x.time}</label><input id="time" type="time"></div></div><p class="route-note">${pickupMode==='gps'?(es?'La recogida será en tu ubicación GPS al hacer la reserva.':'الانطلاق من موقعك عبر GPS عند إجراء الحجز.'):(es?'Te recogerán en el lugar que has elegido.':'الانطلاق من المكان الذي اخترته.')}</p>`:''}</section><section class="booking-section"><h2>${es?'¿Cómo viajas?':'كيف تسافر؟'}</h2><div class="choice ride-choice"><button class="${rideMode==='completo'?'active':''}" aria-pressed="${rideMode==='completo'}" onclick="rememberBooking();rideMode='completo';render()">${uiIcon('car')}<strong>${es?'Coche completo':'السيارة كاملة'}</strong><span>${es?'Un coche para ti':'سيارة لك'}</span></button><button class="${rideMode==='pasajeros'?'active':''}" aria-pressed="${rideMode==='pasajeros'}" onclick="rememberBooking();rideMode='pasajeros';render()">${uiIcon('person')}<strong>${es?'Por pasajeros':'حسب عدد الركاب'}</strong><span>${es?'Elige cuántos viajan':'اختر عدد الركاب'}</span></button></div>${rideMode==='pasajeros'?`<div class="passenger-row"><label for="pax">${es?'Número de pasajeros':'عدد الركاب'}</label><input id="pax" type="number" min="1" value="1"></div>`:''}</section><div class="booking-footer"><div class="fare-row"><div><strong>${priceText({precioPendiente:true})}</strong><span>${es?'Pago en efectivo':'الدفع نقداً'}</span></div>${uiIcon('car')}</div><button class="primary" id="requestTrip" onclick="trip()">${x.request} ${uiIcon('arrow')}</button><p class="footer-note">${es?'Necesitas una cuenta de pasajero para solicitar el viaje.':'يلزم حساب راكب لطلب الرحلة.'}</p></div></div>`}
+function changePickupMode(){rememberBooking();pickupMode=pickupMode==='gps'?'campamento':'gps';render();}
 async function trip(){
   if(submittingTrip)return;
   rememberBooking();
@@ -67,8 +72,8 @@ async function trip(){
   try{await sendTrip();}finally{submittingTrip=false;if(button)button.disabled=false;}
 }
 async function sendTrip(){
-  const requestedMode=rideMode;const requestedTiming=timing;
-  o=lang==='es'?'Mi ubicación GPS':'موقعي عبر GPS';
+  const requestedMode=rideMode;const requestedTiming=timing;const requestedPickup=pickupMode;
+  o=requestedPickup==='gps'?(lang==='es'?'Mi ubicación GPS':'موقعي عبر GPS'):camps[document.querySelector('#o').value];
   d=camps[document.querySelector('#d').value];
 
   const pasajeros = requestedMode==='completo'?null:document.querySelector('#pax').value;
@@ -79,17 +84,18 @@ async function sendTrip(){
     if(!fecha||!hora){alert(lang==='es'?'Elige fecha y hora para la reserva.':'اختر تاريخ ووقت الحجز.');return;}
     fechaHora=`${fecha}T${hora}`;
   }
+  if(!o){alert(lang==='es'?'Elige dónde te recogemos.':'اختر مكان الانطلاق.');return;}
   if(!d){alert(lang==='es'?'Elige un campamento o Tindouf como destino.':'اختر مخيماً أو تندوف كوجهة.');return;}
   if(requestedMode==='pasajeros'&&(!Number.isSafeInteger(Number(pasajeros))||Number(pasajeros)<1)){alert(lang==='es'?'Indica un número válido de pasajeros.':'أدخل عدداً صحيحاً من الركاب.');return;}
   const pickupStatus=document.querySelector('#pickupStatus');
-  if(pickupStatus)pickupStatus.textContent=lang==='es'?'Obteniendo tu ubicación GPS…':'جارٍ تحديد موقعك عبر GPS…';
-  const ubicacion = await captureLocation(0);
-  if(!ubicacion){
+  if(pickupStatus&&requestedPickup==='gps')pickupStatus.textContent=lang==='es'?'Obteniendo tu ubicación GPS…':'جارٍ تحديد موقعك عبر GPS…';
+  const ubicacion = requestedPickup==='gps'?await captureLocation(0):null;
+  if(requestedPickup==='gps'&&!ubicacion){
     const message=lang==='es'?'No se pudo obtener tu ubicación. Activa el GPS y permite la ubicación en el navegador. Después, vuelve a solicitar el viaje.':'تعذر تحديد موقعك. فعّل GPS واسمح للمتصفح بالوصول إلى موقعك، ثم أعد طلب الرحلة.';
     if(pickupStatus)pickupStatus.textContent=message;
     alert(message);return;
   }
-  if(pickupStatus)pickupStatus.textContent=lang==='es'?'Ubicación obtenida. Enviando solicitud…':'تم تحديد موقعك. جارٍ إرسال الطلب…';
+  if(pickupStatus)pickupStatus.textContent=lang==='es'?'Enviando solicitud…':'جارٍ إرسال الطلب…';
 
   try {
     const respuesta = await fetch('/api/viajes', {
@@ -99,6 +105,7 @@ async function sendTrip(){
       },
       body: JSON.stringify({
         origen: o,
+        tipoRecogida:requestedPickup,
         destino: d,
         pasajeros: requestedMode==='completo'?null:Number(pasajeros),
         modoViaje:requestedMode,
@@ -181,7 +188,8 @@ function updatePassengerTrip(viaje){
   const estado=estados[viaje.estado];
   if(!estado) return;
   if(viaje.estado==='finalizado'||viaje.estado==='cancelado') clearInterval(pollTimer);
-  document.querySelector('#screen').innerHTML=`<div class="card center"><div class="big">${estado.icon}</div><h2>${lang==='es'?estado.es:estado.ar}</h2><p>${viaje.origen} → ${viaje.destino}</p>${viaje.estado==='cancelado'?`<p>${lang==='es'?'Motivo: ':'السبب: '}${viaje.motivoCancelacion||''}</p>`:''}${viaje.estado==='finalizado'?ratingForm(viaje,'pasajero'):''}${viaje.estado==='conductor_llegado'?`<button class="secondary" onclick="cancelTrip()">${lang==='es'?'Cancelar viaje':'إلغاء الرحلة'}</button>`:''}<button class="primary" onclick="render()">${t().back}</button></div>`;
+  document.querySelector('#screen').innerHTML=`<div class="card center"><div class="big">${estado.icon}</div><h2>${lang==='es'?estado.es:estado.ar}</h2><p>${viaje.origen} → ${viaje.destino}</p>${viaje.estado==='cancelado'?`<p>${lang==='es'?'Motivo: ':'السبب: '}${viaje.motivoCancelacion||''}</p>`:''}${viaje.estado==='finalizado'?ratingForm(viaje,'pasajero'):''}${contactSlot(viaje,'pasajero')}${viaje.estado==='conductor_llegado'?`<button class="secondary" onclick="cancelTrip()">${lang==='es'?'Cancelar viaje':'إلغاء الرحلة'}</button>`:''}<button class="primary" onclick="render()">${t().back}</button></div>`;
+  loadTripContact(viaje,'pasajero');
 }
 function locationText(ubicacion){
   return ubicacion ? `${ubicacion.lat.toFixed(5)}, ${ubicacion.lng.toFixed(5)}` : (lang==='es'?'Ubicación no disponible':'الموقع غير متاح');
@@ -211,7 +219,24 @@ async function rateTrip(id,actor){
     if(actor==='pasajero') updatePassengerTrip(datos.viaje); else showDriverTrip(datos.viaje);
   }catch(error){alert(lang==='es'?'No se pudo conectar con el servidor.':'تعذر الاتصال بالخادم.');}
 }
-function found(viaje){let x=t();const ubicacion=viaje?.ubicacionConductor;const conductor=viaje?.conductor||{nombre:'Conductor',vehiculo:'Vehículo'};const titulo=passengerConfirmed?(lang==='es'?'¡Viaje confirmado!':'تم تأكيد الرحلة!'):`✅ ${x.found}`;const texto=passengerConfirmed?(lang==='es'?'La ubicación del conductor se actualiza en tiempo real.':'يتم تحديث موقع السائق مباشرةً.'):(lang==='es'?'El conductor ha aceptado tu solicitud.':'قبل السائق طلبك.');document.querySelector('#screen').innerHTML=`<div class="card"><h2>${titulo}</h2><div class="driver">👨🏽 <b>${conductor.nombre}</b><br>🚙 ${conductor.vehiculo}${conductor.matricula?' · '+conductor.matricula:''}<br><span id="driverReputation">⭐</span></div><p>📍 ${o} → ${d}</p><p>🛰️ ${lang==='es'?'Ubicación GPS del conductor':'موقع السائق'}: <b>${locationText(ubicacion)}</b></p><div id="tripMap" class="trip-map"></div><p>💰 <b>${priceText(viaje)}</b> · 💵 ${lang==='es'?'Efectivo':'نقداً'}</p><p>${texto}</p>${passengerConfirmed?'':`<button class="primary" onclick="confirmTrip()">${x.confirm}</button>`}<button class="secondary" style="width:100%;margin-top:12px" onclick="cancelTrip()">${lang==='es'?'Cancelar viaje':'إلغاء الرحلة'}</button></div>`;setTimeout(()=>{showTripMap(viaje);showReputation('driverReputation','conductor',conductor.nombre);},0)}
+function contactSlot(viaje,actor){return ['aceptado','conductor_llegado','en_curso'].includes(viaje.estado)?'<div class="trip-contact" id="contact-'+actor+'" aria-live="polite"></div>':'';}
+async function loadTripContact(viaje,actor){
+ const box=document.querySelector('#contact-'+actor);if(!box)return;
+ const label=actor==='pasajero'?(lang==='es'?'Llamar al conductor':'اتصل بالسائق'):(lang==='es'?'Llamar al pasajero':'اتصل بالراكب');
+ box.textContent=lang==='es'?'Cargando teléfono…':'جارٍ تحميل الهاتف…';
+ try{
+  const response=await fetch('/api/viajes/'+encodeURIComponent(viaje.id)+'/contacto');const result=await response.json();
+  if(!box.isConnected)return;
+  if(!response.ok||!/^\+?\d{6,15}$/.test(result.telefono||''))throw Error();
+  const link=document.createElement('a');link.className='primary call-button';link.href='tel:'+result.telefono;link.textContent=label;
+  const note=document.createElement('p');note.className='route-note';note.textContent=lang==='es'?'Se abrirá el marcador con su número.':'سيُفتح تطبيق الهاتف مع الرقم.';
+  box.replaceChildren(link,note);
+ }catch{
+  if(!box.isConnected)return;box.textContent=lang==='es'?'Teléfono no disponible.':'الهاتف غير متاح.';
+  const retry=document.createElement('button');retry.className='secondary';retry.textContent=lang==='es'?'Reintentar':'أعد المحاولة';retry.onclick=()=>loadTripContact(viaje,actor);box.append(retry);
+ }
+}
+function found(viaje){let x=t();const ubicacion=viaje?.ubicacionConductor;const conductor=viaje?.conductor||{nombre:'Conductor',vehiculo:'Vehículo'};const titulo=passengerConfirmed?(lang==='es'?'¡Viaje confirmado!':'تم تأكيد الرحلة!'):`✅ ${x.found}`;const texto=passengerConfirmed?(lang==='es'?'La ubicación del conductor se actualiza en tiempo real.':'يتم تحديث موقع السائق مباشرةً.'):(lang==='es'?'El conductor ha aceptado tu solicitud.':'قبل السائق طلبك.');document.querySelector('#screen').innerHTML=`<div class="card"><h2>${titulo}</h2><div class="driver">👨🏽 <b>${conductor.nombre}</b><br>🚙 ${conductor.vehiculo}${conductor.matricula?' · '+conductor.matricula:''}<br><span id="driverReputation">⭐</span></div><p>📍 ${o} → ${d}</p><p>🛰️ ${lang==='es'?'Ubicación GPS del conductor':'موقع السائق'}: <b>${locationText(ubicacion)}</b></p><div id="tripMap" class="trip-map"></div><p>💰 <b>${priceText(viaje)}</b> · 💵 ${lang==='es'?'Efectivo':'نقداً'}</p><p>${texto}</p>${contactSlot(viaje,'pasajero')}${passengerConfirmed?'':`<button class="primary" onclick="confirmTrip()">${x.confirm}</button>`}<button class="secondary" style="width:100%;margin-top:12px" onclick="cancelTrip()">${lang==='es'?'Cancelar viaje':'إلغاء الرحلة'}</button></div>`;loadTripContact(viaje,'pasajero');setTimeout(()=>{showTripMap(viaje);showReputation('driverReputation','conductor',conductor.nombre);},0)}
 async function cancelTrip(){
   const motivo=lang==='es'?'Cancelado por el pasajero':'ألغاه الراكب';
   try{
@@ -369,6 +394,7 @@ async function updateDriverTrip(id,estado,ubicacionConductor=null,conductor=null
       body: JSON.stringify({estado, conductorUbicacion: ubicacionConductor, conductor, conductorId:account?.tipo==='conductor'?account.id:null, pagoEstado})
     });
     const datos = await respuesta.json();
+    if(respuesta.status===401){accountMode='login';bookingAccess=false;render();return;}
     if(!datos.ok){ alert(datos.message || 'No se pudo actualizar el viaje.'); return; }
     showDriverTrip(datos.viaje);
   } catch(error) {
@@ -400,8 +426,10 @@ function showDriverTrip(viaje){
       💰 ${priceText(viaje)} · 💵 ${viaje.metodoPago||'Efectivo'} (${viaje.pagoEstado||'pendiente'})
       ${viaje.estado==='finalizado'&&!viaje.precioPendiente&&viaje.pagoEstado!=='pagado'?`<br><br><button class="primary" onclick="markPaid('${viaje.id}')">${lang==='es'?'Marcar como pagado':'تأكيد الدفع'}</button>`:''}
       ${viaje.estado==='finalizado'?ratingForm(viaje,'conductor'):''}
+      ${contactSlot(viaje,'conductor')}
       ${siguiente?`<br><br><button class="primary" onclick="updateDriverTrip('${viaje.id}', '${siguiente.estado}')">${siguiente.texto}</button>`:''}
     </div>`;
+  loadTripContact(viaje,'conductor');
   setTimeout(()=>showTripMap(viaje),0);
 }
 function markPaid(id){updateDriverTrip(id,'finalizado',null,null,'pagado');}
