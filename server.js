@@ -48,7 +48,7 @@ function checkPassword(password, saved) { try { const [salt, hash] = saved.split
 
 app.use(express.json());
 // Only browser assets are public; never expose server code or trip storage.
-for (const asset of ['index.html', 'app.js', 'styles.css', 'manifest.json', 'service-worker.js']) {
+for (const asset of ['index.html', 'app.js', 'styles.css', 'manifest.json', 'service-worker.js', 'taxily-logo.png']) {
   app.get('/' + asset, (req, res) => res.sendFile(path.join(__dirname, asset)));
 }
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
